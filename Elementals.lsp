@@ -59,24 +59,3 @@ j = convert neighbours to int
 	    for v = current then (next-gen rule-vector v)
 	    collect (list i v))))
   
-
-(coerce '#*00100 'simple-bit-vector)
-(print (floor (/ 147 2)))
-(print (rem 147 2))
-(print (mod 147 2))
-
-(print (reverse (loop for start = 30
-		   for number = (floor (/ start 2)) then (floor (/ number 2))
-		   for r = (mod number 2)
-		   while (> number 0)
-		   collect r)))
-(coerce (write-to-string 30 :base 2) 'simple-bit-vector)
-
-(format nil (format nil "~~~dr" 2) 30)
-
-(defmethod rule)
-
-(defmethod next-gen ((current array) rule)
-  (let* ((new-gen (make-array (length current) :element-type 'bit)))
-    (loop for i below (length current)
-       do )))

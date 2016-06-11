@@ -24,9 +24,9 @@
 		   (t r))))
     (print (list r1 r))
     (* x r1 (- 1 x))))
-;; this function scales values like the Max object scale
+;; Linear Interpolation
 (defmethod scale-value (value oldMin oldMax newMin newMax)
-  (+ (/ (* (- value oldMin)
+  (+ (floor (* (- value oldMin)
 	   (- newMax newMin)) (- oldMax oldMin)) newMin))
 ;; Runs the logistic map n times, starting from an initial x0
 ;; value and then scales it to (min max) values
@@ -65,7 +65,54 @@
        (setf x0 x
 	     y0 y
 	     z0 z)))
-  
+
+(defun double-pendulum (n m1 m2 l1 l2 t1 t2 &key (time 0.01) (g 9.81))
+  (loop repeat n
+     with theta1 = t1
+     with theta2 = t2
+     for delta = (- theta1 theta2)
+     with d1theta1 = 0.0
+     with d1theta2 = 0.0
+     for d2theta1 = (/ (+ (* m2 l1 (expt d1theta1 2)
+			     (sin delta) (cos delta))
+			  (* m2 g (sin theta2) (cos delta))
+			  (* m2 l2 (expt d1theta2 2) (sin delta))
+			  (- (* (+ m1 m2) g (sin theta1))))
+		       (- (* l1 (+ m1 m2))
+			  (* m2 l2
+			     (expt (cos delta) 2))))
+     for d2theta2 = (/ (+ (- (* m2 l2 (expt d1theta2 2)
+				(sin delta) (cos delta)))
+			  (* (+ m1 m2)
+			     (- (* g (sin theta1) (cos delta))
+				(* l1 (expt d1theta1 2) (sin delta))
+				(* g (sin theta2)))))
+		       (- (* (+ m1 m2) l2)
+			  (* m2 l2
+			     (expt (cos delta) 2))))
+     for x1 = (* l1 (sin theta1))	; in radians
+     for y1 = (- (* l1 (cos theta1)))
+     for x2 = (+ (* l1 (sin theta1)) (* l2 (sin theta2)))
+     for y2 = (- (- (* l1 (cos theta1))) (* l2 (cos theta2))) 
+     collect (list x1 y1 x2 y2)
+     do
+       (setf d1theta1 (+ d1theta1 (* time d2theta1))
+	     d1theta2 (+ d1theta2 (* time d2theta2))
+	     theta1 (+ theta1 (* time d1theta1))
+	     theta2 (+ theta2 (* time d1theta2)))))
+
+(defun calculateTotalTime (measures beatunit tempo)
+  (/ (* measures beatunit) tempo))
+
+(defun calculateMeasures (total tempo beatunit)
+  (/ (* total tempo) beatunit))
+
+(defun calculateBeatUnit (total measures tempo)
+  (/ (* total tempo) measures))
+
+(defun calculateTempo (total measures beatunit)
+  (/ (* measures beatunit) total))
+
 ;; recursive functions
 (defmethod m91 ((m math-operations) n)
   (if (> n 100)
@@ -135,46 +182,6 @@
        (l2 7)
        (t1 (/ (* 90 pi) 180))
        (t2 (/ (* 90 pi) 180)))
-
-(defun double-pendulum (n m1 m2 l1 l2 t1 t2 &optional (time 0.01) (g 9.81))
-  (loop repeat n
-     ;; for (x0 y0) float = '(350.0 60.0)
-     with theta1 = t1
-     with theta2 = t2
-     for delta = (- theta1 theta2)
-     with d1theta1 = 0.0
-     with d1theta2 = 0.0
-     for d2theta1 = (/ (+ (* m2 l1 (expt d1theta1 2)
-			     (sin delta) (cos delta))
-			  (* m2 g (sin theta2) (cos delta))
-			  (* m2 l2 (expt d1theta2 2) (sin delta))
-			  (- (* (+ m1 m2) g (sin theta1))))
-		       (- (* l1 (+ m1 m2))
-			  (* m2 l2
-			     (expt (cos delta) 2))))
-     for d2theta2 = (/ (+ (- (* m2 l2 (expt d1theta2 2)
-				(sin delta) (cos delta)))
-			  (* (+ m1 m2)
-			     (- (* g (sin theta1) (cos delta))
-				(* l1 (expt d1theta1 2) (sin delta))
-				(* g (sin theta2)))))
-		       (- (* (+ m1 m2) l2)
-			  (* m2 l2
-			     (expt (cos delta) 2))))
-     for x1 = (* l1 (sin theta1)) ; in radians
-     for y1 = (- (* l1 (cos theta1)))
-     for x2 = (+ (* l1 (sin theta1)) (* l2 (sin theta2)))
-     for y2 = (- (- (* l1 (cos theta1))) (* l2 (cos theta2)))
-
-       
-     collect (list x1 y1 x2 y2)
-     do
-       ;; (print (list delta d1theta1 d1theta2 d2theta1 d2theta2))
-       (setf d1theta1 (+ d1theta1 (* time d2theta1))
-	     d1theta2 (+ d1theta2 (* time d2theta2))
-	     theta1 (+ theta1 (* time d1theta1))
-	     theta2 (+ theta2 (* time d1theta2))))
-  )
 (print (double-pendulum 100 m1 m2 l1 l2 t1 t2))
 )
 

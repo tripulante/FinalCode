@@ -25,7 +25,7 @@
 				    (5 (5))))))
   (print (do-lookup koch1 1 57))
   (print (do-lookup koch2 1 57))
-  (print (do-lookup dragon 1 20)))
+  (print (do-lookup dragon 1 100)))
 
 (let* ((levels 5)
        (value 10000)

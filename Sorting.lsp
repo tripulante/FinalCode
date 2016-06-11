@@ -40,17 +40,57 @@
 		do
 		  (rotatef (nth j l) (nth (1- j) l))))))
 
+(defmethod bubble-sort ((sc sorting-class) l)
+  (setf (subsorts sc)
+	(let ((results nil))
+	  (loop with n = (length l)
+	     for i from 2 to n
+	     with swaps = nil	 
+	     do
+	       (loop for j from 0 to (- n 2)
+		  if (> (nth j l) (nth (1+ j) l))
+		  do
+		    (rotatef (nth j l) (nth (1+ j) l))
+		    (setf swaps t)
+		    (setf results (append results (list (copy-list l)))))
+	     never (not swaps))
+	  results)))
+
+(defmethod cocktail-sort ((sc sorting-class) l)
+  (let* ((results nil))
+    (loop with swapped = nil
+       with n = (length l)
+       do
+	 (setf swapped nil)
+	 (loop for i from 0 to (- n 2)
+	    if (> (nth i l) (nth (1+ i) l))
+	    do
+	      (rotatef (nth i l) (nth (1+ i) l))
+	      (setf swapped t)
+	      (setf results (append results (list (copy-list l)))))
+	 (if swapped
+	     (loop for i from (- n 2) downto 0
+		if (> (nth i l) (nth (1+ i) l))
+		do
+		  (rotatef (nth i l) (nth (1+ i) l))
+		  (setf swapped t)
+		  (setf results (append results (list (copy-list l))))))
+       while swapped)
+    results))
+
 
 (defmethod clear-stored-sort ((sc sorting-class))
   (setf (subsorts sc) nil))
 
 (let* ((sc (make-instance 'sorting-class))
        (l '(3 7 4 9 5 2 6 1)))
-  (insertion-sort sc (copy-list l))
-  (print (subsorts sc))
-  (clear-stored-sort sc)
-  (merge-sort sc l)
-  (print (subsorts sc))
-  (clear-stored-sort sc)
-  (quick-sort sc (copy-list l) 0 (1- (length l)))
-  (print (subsorts sc)))
+  ;; (insertion-sort sc (copy-list l))
+  ;; (print (subsorts sc))
+  ;; (clear-stored-sort sc)
+  ;; (merge-sort sc l)
+  ;; (print (subsorts sc))
+  ;; (clear-stored-sort sc)
+  ;; (quick-sort sc (copy-list l) 0 (1- (length l)))
+  ;; (print (subsorts sc))
+  ;; (print (bubble-sort sc (copy-list l)))
+  (print (cocktail-sort sc (copy-list l))))
