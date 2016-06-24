@@ -81,16 +81,3 @@
 
 (defmethod clear-stored-sort ((sc sorting-class))
   (setf (subsorts sc) nil))
-
-(let* ((sc (make-instance 'sorting-class))
-       (l '(3 7 4 9 5 2 6 1)))
-  ;; (insertion-sort sc (copy-list l))
-  ;; (print (subsorts sc))
-  ;; (clear-stored-sort sc)
-  ;; (merge-sort sc l)
-  ;; (print (subsorts sc))
-  ;; (clear-stored-sort sc)
-  ;; (quick-sort sc (copy-list l) 0 (1- (length l)))
-  ;; (print (subsorts sc))
-  ;; (print (bubble-sort sc (copy-list l)))
-  (print (cocktail-sort sc (copy-list l))))

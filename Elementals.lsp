@@ -1,21 +1,21 @@
 (defclass elementary-automata ()())
 
-(nth 2 '(1 2 4))
+;; (nth 2 '(1 2 4))
 
-create rules:
-rule-array = convert rule number from 0 to 255 into a 8-bit binary number/array
+;; create rules:
+;; rule-array = convert rule number from 0 to 255 into a 8-bit binary number/array
 
-map:
-for an array a
-get neighbours for i -> (list (1- i) i (1+ i))
-if i = 0 -> ((nth (1- (length a)) a) i (1+ i))
-elif i = (1- length a) -> ((1- i) i (first a))
+;; map:
+;; for an array a
+;; get neighbours for i -> (list (1- i) i (1+ i))
+;; if i = 0 -> ((nth (1- (length a)) a) i (1+ i))
+;; elif i = (1- length a) -> ((1- i) i (first a))
 
-calculate rule for neighbours
+;; calculate rule for neighbours
 
-calculate rule:
-j = convert neighbours to int
-(setf (aref i a) (nth rule-array j))
+;; calculate rule:
+;; j = convert neighbours to int
+;; (setf (aref i a) (nth rule-array j))
 
 
 
@@ -52,10 +52,11 @@ j = convert neighbours to int
 	    rule-vector)))
     new-gen))
 
-(let* ((rule-vector #*00011110)
-       (current #*0000001000000))
-  (print (loop repeat 10
-	      for i from 0
-	    for v = current then (next-gen rule-vector v)
-	    collect (list i v))))
+(defmethod get-live-positions ((current vector))
+  (loop for i from 1 below (1-(length current))
+     for v = (aref current i)
+     if (= 1 v)
+     collect i))
+
+
   

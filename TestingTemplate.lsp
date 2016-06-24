@@ -2,8 +2,8 @@
 ;; crear subgrupos en distintas métricas
 
 (let*
-    ((rule-vector #*10110110)
-     (current #*0000000000100)
+    ((rule-vector #*00111100)
+     (current #*0000001000000)
      (generations (loop repeat 100
 		     for i from 0
 		     for v = current then (next-gen rule-vector v)
