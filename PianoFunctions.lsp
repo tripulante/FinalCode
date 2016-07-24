@@ -1,7 +1,7 @@
 
 ;; Creates a tailored instance of a sc piece for piano using CA and
 ;; the helper functions created before (fractal pitch sets)
-(defun piano1-scaled
+(defun piano1
     (storepath startpitch tempo
      tmin
      rhythms
@@ -13,26 +13,35 @@
        (palette-type 2)
        (reverse-pc nil)
        (offset '(0 0 2))
-       (type 1)
+       (type 0)
        (used-notes nil)
        (base-unit 'q.)
-       (base-tempo-value 2))
+       (base-tempo-value 2)
+       (sequential t)
+       (use-lm-curves))
   (let*
     ((chord-fn (chord-function
 		(get-data 'piano
 			  +slippery-chicken-standard-instrument-palette+)))
-     (rev (format nil "~A-~A-~A~A"
+     (chord-fn-l (chord-function
+		(get-data 'piano-lh
+			  +slippery-chicken-standard-instrument-palette+)))
+     (rev (format nil "~A-~A-~A~A~A~A"
 		  (case palette-type
-		    (0 "Koch1")
-		    (1 "Koch2")
-		    (t "Dragon"))
+		    (0 "K1")
+		    (1 "K2")
+		    (t "Drg"))
 		  (if usechord
-		      chord-fn
+		      (list chord-fn chord-fn-l)
 		      "")
 		  startpitch
 		  (if reverse-pc
 		      "-R"
-		      "")))
+		      "")
+		  (if use-lm-curves
+		      "-LM"
+		      "")
+		  offset))
      (required-bars (calculate-measures tmin tempo base-tempo-value))
      (auto (make-instance 'automaton))
      (s1-rh (scale-rhythms scale1 rhythms))
@@ -52,24 +61,30 @@
 		 append (mapcar #'first l)))
      (rh-live (loop for l in livecells
 		 append (mapcar #'second l)))
-     (lh-rhythms (loop for r in rh-live
+     (lh-rhythms (loop for r in lh-live ;rh-live
 		    collect (nth r s1-rh)))
      (rh-rhythms (loop for r in rh-live
 		    collect (nth r s2-rh)))
      (bar-set (list (multiple-value-list
 		     (create-bars (values-to-rhythms lh-rhythms)
 				  time-sig
-				  :sequential t))
+				  :sequential sequential))
 		    (multiple-value-list
 		     (create-bars (values-to-rhythms rh-rhythms)
 				  time-sig
-				  :sequential t))))
+				  :sequential sequential))))
      (bars (append (first (mapcar #'third bar-set))
 		   (second (mapcar #'third bar-set))))
      (attacklist (mapcar #'get-attacks
 			 (append
 			  (first (mapcar #'second bar-set))
 			  (second (mapcar #'second bar-set)))))
+     (lm-curves (mapcar #'(lambda (x)
+			    (loop for v in (logistic-curve 0.2 3.90 x)
+			       for sv = (scale-value v 0. 1. 1 8)
+			       collect (if usechord
+					   (list sv)
+					   sv))) attacklist))
      (pitchcurves (mapcar #'(lambda (x)
 			      (if reverse-pc
 				  (loop repeat x
@@ -82,7 +97,11 @@
 				     collect (if usechord
 						 (list i)
 						 i)))) attacklist))
-     (rseqs (create-multiple-rthm-seqs bars pitchcurves time-sig))
+     (rseqs (create-multiple-rthm-seqs bars
+				       (if use-lm-curves
+					   lm-curves
+					   pitchcurves)
+				       time-sig))
      (totalbars (length bars))
      (offset-lists (loop repeat 10
 		     for v from 0
@@ -118,138 +137,139 @@
 		:avoid-used-notes used-notes)))
   (midi-play template :midi-file (concatenate
 			 'string storepath
-			 (format nil "P1_~A_~D_~A_~D_scaled_~A.mid"
+			 (format nil "P1_~A-~D-~A-~D-~A-~A.mid"
 				 rev
 				 tempo
 				 (data time-sig)
 				 type
-				 (list scale1 scale2))))))
-
-(defun piano1-regular
-    (storepath startpitch tempo
-     tmin
-     rhythms
-     rhythms-lh
-     time-sig
-     &key (scale1 2)
-       (scale2 2)
-       (usechord nil)
-       (palette-type 2)
-       (reverse-pc nil)
-       (offset '(0 0 2))
-       (type 1)
-       (used-notes nil)
-       (base-unit 'q.)
-       (base-tempo-value 2))
-  (let*
-    ((chord-fn (chord-function
-		(get-data 'piano
-			  +slippery-chicken-standard-instrument-palette+)))
-     (rev (format nil "~A-~A-~A~A"
-		  (case palette-type
-		    (0 "Koch1")
-		    (1 "Koch2")
-		    (t "Dragon"))
-		  (if usechord
-		      chord-fn
-		      "")
-		  startpitch
-		  (if reverse-pc
-		      "-R"
-		      "")))
-     (required-bars (calculate-measures tmin tempo base-tempo-value))
-
-     (auto (make-instance 'automaton))
-     (generations (progn
-		    (create-grid auto (length rhythms) (length rhythms))
-		    (set-live-cells auto '((1 1) (2 1) (1 2) (4 3) (3 4) (4 4)
-					   (4 0) (6 1) (4 2) (4 2)
-					   (6 2) (5 1) (5 2) (8 3)
-					   (7 4) (7 4)) :type type)
-		    (loop repeat 20 ;100
-		       for arr = (grid auto)
-		       then (castep auto arr :type type)
-		       collect arr)))
-     (livecells (loop for g in generations
-		   collect (get-live-cells auto g)))
-     (lh-live (loop for l in livecells
-		 append (mapcar #'first l)))
-     (rh-live (loop for l in livecells
-		 append (mapcar #'second l)))
-     (lh-rhythms (loop for r in rh-live
-		    collect (nth r rhythms)))
-     (rh-rhythms (loop for r in rh-live
-		    collect (nth r rhythms-lh)))
-     (sequential t)
-     (bar-set (list (multiple-value-list
-		     (create-bars (values-to-rhythms lh-rhythms)
-				  time-sig
-				  :sequential sequential))
-		    (multiple-value-list
-		     (create-bars (values-to-rhythms rh-rhythms)
-				  time-sig
-				  :sequential sequential))))
-     (bars (append (first (mapcar #'third bar-set))
-		   (second (mapcar #'third bar-set))))
-     (attacklist (mapcar #'get-attacks
-			 (append
-			  (first (mapcar #'second bar-set))
-			  (second (mapcar #'second bar-set)))))
-     (pitchcurves (mapcar #'(lambda (x)
-			      (if reverse-pc
-				  (loop repeat x
-				     for i from (1+ x) downto 1
-				     collect (if usechord
-						 (list i)
-						 i))
-				  (loop repeat x
-				     for i from 1
-				     collect (if usechord
-						 (list i)
-						 i)))) attacklist))
-     (rseqs (create-multiple-rthm-seqs bars pitchcurves time-sig))
-     (totalbars (length bars))
-     (offset-lists (loop repeat 10
-		     for v from 0
-		     collect (mapcar #'(lambda (x)
-					 (+ x v)) offset)))
-     (set-offsets (loop for i in offset-lists
-		     collect (case palette-type
-			       (0 (koch-to-ps startpitch 10 :offset i))
-			       (1 (koch-to-ps startpitch 10 :type2 t :offset i))
-			       (t (dragon-to-ps startpitch 10 :offset i)))))
-     (k-palette (loop for p in set-offsets
-		   for i from 1
-		   collect (list i (list p))))
-     (maplist (loop repeat required-bars
-		   for i from 1
-		   collect (1+ (mod i (length k-palette)))))
-     (template (make-slippery-chicken
-		'+cycle+
-		:title "Superposiciones Piano I"
-		:composer "John Palma"
-		:ensemble '(((pr (piano :midi-channel 1))
-			     (pl (piano-lh :midi-channel 2))))
-		:tempo-map `((1 (,base-unit ,tempo)))
-		:set-palette k-palette
-		:set-map `((1 ,maplist))
-		:rthm-seq-palette rseqs
-		:rthm-seq-map `((1 ((pr ,(loop repeat (length maplist)
-					    for i from 1
-					    collect (1+ (mod i totalbars))))
-				    (pl ,(loop repeat (length maplist)
-				    	    for i from (floor totalbars 2)
-				    	    collect (1+ (mod i totalbars)))))))
-		:avoid-used-notes used-notes)))
-  (midi-play template
-	     :midi-file (concatenate
-			 'string storepath
-			 (format nil "P1_~A_~D_~A_~D_~A.mid"
-				 rev
-				 tempo
-				 (data time-sig)
-				 type
+				 (list scale1 scale2)
 				 sequential)))))
+
+;; (defun piano1-regular
+;;     (storepath startpitch tempo
+;;      tmin
+;;      rhythms
+;;      rhythms-lh
+;;      time-sig
+;;      &key (scale1 2)
+;;        (scale2 2)
+;;        (usechord nil)
+;;        (palette-type 2)
+;;        (reverse-pc nil)
+;;        (offset '(0 0 2))
+;;        (type 0)
+;;        (used-notes nil)
+;;        (base-unit 'q.)
+;;        (base-tempo-value 2))
+;;   (let*
+;;     ((chord-fn (chord-function
+;; 		(get-data 'piano
+;; 			  +slippery-chicken-standard-instrument-palette+)))
+;;      (rev (format nil "~A-~A-~A~A"
+;; 		  (case palette-type
+;; 		    (0 "Koch1")
+;; 		    (1 "Koch2")
+;; 		    (t "Dragon"))
+;; 		  (if usechord
+;; 		      chord-fn
+;; 		      "")
+;; 		  startpitch
+;; 		  (if reverse-pc
+;; 		      "-R"
+;; 		      "")))
+;;      (required-bars (calculate-measures tmin tempo base-tempo-value))
+
+;;      (auto (make-instance 'automaton))
+;;      (generations (progn
+;; 		    (create-grid auto (length rhythms) (length rhythms))
+;; 		    (set-live-cells auto '((1 1) (2 1) (1 2) (4 3) (3 4) (4 4)
+;; 					   (4 0) (6 1) (4 2) (4 2)
+;; 					   (6 2) (5 1) (5 2) (8 3)
+;; 					   (7 4) (7 4)) :type type)
+;; 		    (loop repeat 20 ;100
+;; 		       for arr = (grid auto)
+;; 		       then (castep auto arr :type type)
+;; 		       collect arr)))
+;;      (livecells (loop for g in generations
+;; 		   collect (get-live-cells auto g)))
+;;      (lh-live (loop for l in livecells
+;; 		 append (mapcar #'first l)))
+;;      (rh-live (loop for l in livecells
+;; 		 append (mapcar #'second l)))
+;;      (lh-rhythms (loop for r in lh-live ; rh-live
+;; 		    collect (nth r rhythms)))
+;;      (rh-rhythms (loop for r in rh-live
+;; 		    collect (nth r rhythms-lh)))
+;;      (sequential t)
+;;      (bar-set (list (multiple-value-list
+;; 		     (create-bars (values-to-rhythms lh-rhythms)
+;; 				  time-sig
+;; 				  :sequential sequential))
+;; 		    (multiple-value-list
+;; 		     (create-bars (values-to-rhythms rh-rhythms)
+;; 				  time-sig
+;; 				  :sequential sequential))))
+;;      (bars (append (first (mapcar #'third bar-set))
+;; 		   (second (mapcar #'third bar-set))))
+;;      (attacklist (mapcar #'get-attacks
+;; 			 (append
+;; 			  (first (mapcar #'second bar-set))
+;; 			  (second (mapcar #'second bar-set)))))
+;;      (pitchcurves (mapcar #'(lambda (x)
+;; 			      (if reverse-pc
+;; 				  (loop repeat x
+;; 				     for i from (1+ x) downto 1
+;; 				     collect (if usechord
+;; 						 (list i)
+;; 						 i))
+;; 				  (loop repeat x
+;; 				     for i from 1
+;; 				     collect (if usechord
+;; 						 (list i)
+;; 						 i)))) attacklist))
+;;      (rseqs (create-multiple-rthm-seqs bars pitchcurves time-sig))
+;;      (totalbars (length bars))
+;;      (offset-lists (loop repeat 10
+;; 		     for v from 0
+;; 		     collect (mapcar #'(lambda (x)
+;; 					 (+ x v)) offset)))
+;;      (set-offsets (loop for i in offset-lists
+;; 		     collect (case palette-type
+;; 			       (0 (koch-to-ps startpitch 10 :offset i))
+;; 			       (1 (koch-to-ps startpitch 10 :type2 t :offset i))
+;; 			       (t (dragon-to-ps startpitch 10 :offset i)))))
+;;      (k-palette (loop for p in set-offsets
+;; 		   for i from 1
+;; 		   collect (list i (list p))))
+;;      (maplist (loop repeat required-bars
+;; 		   for i from 1
+;; 		   collect (1+ (mod i (length k-palette)))))
+;;      (template (make-slippery-chicken
+;; 		'+cycle+
+;; 		:title "Superposiciones Piano I"
+;; 		:composer "John Palma"
+;; 		:ensemble '(((pr (piano :midi-channel 1))
+;; 			     (pl (piano-lh :midi-channel 2))))
+;; 		:tempo-map `((1 (,base-unit ,tempo)))
+;; 		:set-palette k-palette
+;; 		:set-map `((1 ,maplist))
+;; 		:rthm-seq-palette rseqs
+;; 		:rthm-seq-map `((1 ((pr ,(loop repeat (length maplist)
+;; 					    for i from 1
+;; 					    collect (1+ (mod i totalbars))))
+;; 				    (pl ,(loop repeat (length maplist)
+;; 				    	    for i from (floor totalbars 2)
+;; 				    	    collect (1+ (mod i totalbars)))))))
+;; 		:avoid-used-notes used-notes)))
+;;   (midi-play template
+;; 	     :midi-file (concatenate
+;; 			 'string storepath
+;; 			 (format nil "P1_~A_~D_~A_~D_~A.mid"
+;; 				 rev
+;; 				 tempo
+;; 				 (data time-sig)
+;; 				 type
+;; 				 sequential)))))
 
 
 (defun piano2
@@ -266,22 +286,35 @@
        (used-notes nil)
        (base-unit 'q.)
        (base-tempo-value 2)
-       (rule 90))
+       (rule 90)
+       (reverse-sets nil)
+       (extra-info "")
+       (use-lm-curves nil))
 (let*
     ((chord-fn (chord-function
 		(get-data 'piano
 			  +slippery-chicken-standard-instrument-palette+)))
-     (rev (format nil "~A-~A-~A~A"
+     (chord-fn-l (chord-function
+		(get-data 'piano-lh
+			  +slippery-chicken-standard-instrument-palette+)))
+     (rev (format nil "~A-~A-~A~A~A~A~A"
 		  (case palette-type
-		    (0 "Koch1")
-		    (1 "Koch2")
-		    (t "Dragon"))
+		    (0 "K1")
+		    (1 "K2")
+		    (t "Drg"))
 		  (if usechord
-		      chord-fn
+		      (list chord-fn chord-fn-l)
 		      "")
 		  startpitch
 		  (if reverse-pc
 		      "-R"
+		      "")
+		  (if use-lm-curves
+		      "-LM"
+		      "")
+		  offset
+		  (if reverse-sets
+		      "-RST"
 		      "")))
      (rulelist '((90 #*01011010)
 		 (30 #*00011110)
@@ -295,7 +328,14 @@
 		      (setf (gethash (first i) hash) (second i)))
 		 hash))
      (rule-vector (gethash rule rulehash))
-     (current #*00000100000)
+     (current (make-array (+ 2 (length base-rhythms))
+			  :element-type 'bit
+			  :initial-contents (loop with r = (+ 2 (length base-rhythms))
+					       repeat r
+					       for i from 0
+					       collect (if (= i (floor r 2))
+							   1
+							   0))))
      (required-bars (calculate-measures tmin tempo base-tempo-value))
      (rhythms (scale-rhythms scale1 base-rhythms))
      (rhythms-l (scale-rhythms scale2 base-rhythms))
@@ -333,6 +373,12 @@
 			 (append
 			  (first (mapcar #'second bar-set))
 			  (second (mapcar #'second bar-set)))))
+     (lm-curves (mapcar #'(lambda (x)
+			    (loop for v in (logistic-curve 0.2 3.891 x)
+			       for sv = (scale-value v 0. 1. 1 8)
+			       collect (if usechord
+					   (list sv)
+					   sv))) attacklist))
      (pitchcurves (mapcar #'(lambda (x)
 			      (if reverse-pc
 				  (loop repeat x
@@ -345,7 +391,11 @@
 				     collect (if usechord
 						 (list i)
 						 i)))) attacklist))
-     (rseqs (create-multiple-rthm-seqs bars pitchcurves time-sig))
+     (rseqs (create-multiple-rthm-seqs bars
+				       (if use-lm-curves
+					   lm-curves
+					   pitchcurves)
+				       time-sig))
      (offset-lists (loop repeat 10
 		     for v from 0
 		     collect (mapcar #'(lambda (x)
@@ -355,7 +405,10 @@
 			       (0 (koch-to-ps startpitch 10 :offset i))
 			       (1 (koch-to-ps startpitch 10 :type2 t :offset i))
 			       (t (dragon-to-ps startpitch 10 :offset i)))))
-     (dr-palette (loop for p in set-offsets
+     (dr-palette (loop with sets = (if reverse-sets
+				    (reverse set-offsets)
+				    set-offsets)
+		    for p in sets
 		    for i from 1
 		    collect (list i (list p))))
      (maplist (loop repeat required-bars
@@ -380,14 +433,16 @@
 				    	    for i from (floor totalbars 2)
 				    	    collect (1+ (mod i totalbars)))))))
 		:avoid-used-notes used-notes)))
+  ;; (print lm-curves)
   (midi-play template :midi-file (concatenate
 				  'string storepath
-				  (format nil "P2_~A_~D_~A_~D_scaled_~A.mid"
+				  (format nil "P2_~A_~D_~A_~D_scaled_~A~A.mid"
 					  rev
 					  tempo
 					  (data time-sig)
 					  rule
-					  (list scale1 scale2))))))
+					  (list scale1 scale2)
+					  extra-info)))))
 
 
 (let* ((storepath "/tmp/")
