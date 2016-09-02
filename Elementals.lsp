@@ -1,24 +1,13 @@
+;; Class that creates and manipulates Elementary CA
+;; @author John Palma
+
+
 (defclass elementary-automata ()())
 
-;; (nth 2 '(1 2 4))
-
-;; create rules:
-;; rule-array = convert rule number from 0 to 255 into a 8-bit binary number/array
-
-;; map:
-;; for an array a
-;; get neighbours for i -> (list (1- i) i (1+ i))
-;; if i = 0 -> ((nth (1- (length a)) a) i (1+ i))
-;; elif i = (1- length a) -> ((1- i) i (first a))
-
-;; calculate rule for neighbours
-
-;; calculate rule:
-;; j = convert neighbours to int
-;; (setf (aref i a) (nth rule-array j))
-
-
-
+;; According to the information in rule-array calculates
+;; the next generation			
+;; values: list of three values corresponding to the cell 
+;; and neighbours to compare against the rule array
 (defmethod calculate-rule (values (rule-array vector))
   (let* ((val (loop for r in values
 		   for ex from (1- (length values)) downto 0
@@ -26,6 +15,7 @@
 	 (index (abs (- val (1- (length rule-array))))))
     (aref rule-array index)))
 
+;; Retrieves the live neighbours for a position i in a vector l
 (defmethod getneighbours ((l vector) i)
   (let* ((last (1- (length l)))
 	 ;; fix wraparound
@@ -37,6 +27,9 @@
     (loop for j in indexes
        collect (aref l j))))
 
+;; According to the information in rule-vector calculates
+;; the next generation			
+;; current: current generation 
 (defmethod next-gen ((rule-vector vector) (current vector))
   (let* ((new-gen (make-array (length current)
 			      :element-type 'bit
@@ -44,7 +37,6 @@
     (loop with len = (length current)
        for i from 1 below (1- len)
        do
-	 ;; (print (list i (getneighbours current i)))
 	 (setf
 	   (bit new-gen i)
 	   (calculate-rule
@@ -52,6 +44,8 @@
 	    rule-vector)))
     new-gen))
 
+;; Retrieves the positions of the live cells in a generation
+;; current: current generation
 (defmethod get-live-positions ((current vector))
   (loop for i from 1 below (1-(length current))
      for v = (aref current i)

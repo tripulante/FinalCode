@@ -1,13 +1,8 @@
+;; Contains Additional functions
+;; Includes fractal pitch set and curve generation,
+;; chaotic systems and 
+;; @author John Palma
 
-;; calculates both adiabatic and isothermal bubble-pulsation
-(defun bubble-pulsation (a p0 rho r0)
-  (let ((adiabatic (* (/ 1 (* 2 pi r0))
-		      (sqrt (/ (* 3 a p0) rho))))
-	(isothermal (* (/ 1 (* 2 pi r0))
-		       (sqrt
-			(+ (/ (* 3 p0) rho)
-			   (/ (* 4 a) (* rho r0)))))))
-    (values adiabatic isothermal)))
 
 ;; chaotic functions
 
@@ -35,19 +30,7 @@
 
 
 
-;; Calculates n value sets of a Lorenz System, given values for
-;; sigma, beta and ro
-(defmethod lorenz-system (n sigma beta ro &key (init 0.01))
-    (loop repeat n
-       with (x0 y0 z0) float = '(1.0 1.0 1.0)
-       for x = (+ x0 (* init (* sigma (- y0 x0))))
-       for y = (+ y0 (* init (- (* x0 (- ro z0)) y0)))
-       for z = (+ z0 (* init (- (* x0 y0) (* z0 beta))))
-       collect (list x y z)
-       do
-	 (setf x0 x
-	       y0 y
-	       z0 z)))
+
 ;; Calculates n value sets of a Rössler Attractor, given values for
 ;; a, b and c
 (defmethod rossler-attractor (n a b c &key (inc 0.01) (x1 1.0) (y1 1.0) (z1 1.0))
@@ -62,42 +45,6 @@
 	     y0 y
 	     z0 z)))
 
-;; Calculates a set of values for a double pendulum given the masses
-;; of each mass, the length of each pendulum, the initial angles
-(defun double-pendulum (n m1 m2 l1 l2 t1 t2 &key (time 0.01) (g 9.81))
-  (loop repeat n
-     with theta1 = t1
-     with theta2 = t2
-     for delta = (- theta1 theta2)
-     with d1theta1 = 0.0
-     with d1theta2 = 0.0
-     for d2theta1 = (/ (+ (* m2 l1 (expt d1theta1 2)
-			     (sin delta) (cos delta))
-			  (* m2 g (sin theta2) (cos delta))
-			  (* m2 l2 (expt d1theta2 2) (sin delta))
-			  (- (* (+ m1 m2) g (sin theta1))))
-		       (- (* l1 (+ m1 m2))
-			  (* m2 l2
-			     (expt (cos delta) 2))))
-     for d2theta2 = (/ (+ (- (* m2 l2 (expt d1theta2 2)
-				(sin delta) (cos delta)))
-			  (* (+ m1 m2)
-			     (- (* g (sin theta1) (cos delta))
-				(* l1 (expt d1theta1 2) (sin delta))
-				(* g (sin theta2)))))
-		       (- (* (+ m1 m2) l2)
-			  (* m2 l2
-			     (expt (cos delta) 2))))
-     for x1 = (* l1 (sin theta1))	; in radians
-     for y1 = (- (* l1 (cos theta1)))
-     for x2 = (+ (* l1 (sin theta1)) (* l2 (sin theta2)))
-     for y2 = (- (- (* l1 (cos theta1))) (* l2 (cos theta2))) 
-     collect (list x1 y1 x2 y2)
-     do
-       (setf d1theta1 (+ d1theta1 (* time d2theta1))
-	     d1theta2 (+ d1theta2 (* time d2theta2))
-	     theta1 (+ theta1 (* time d1theta1))
-	     theta2 (+ theta2 (* time d1theta2)))))
 
 ;; calculates the total time elapsed (in minutes) given a number of measures,
 ;; a beat unit (e.g. if in 6/8 time then the beat unit is 2 dotted quarters)
@@ -169,9 +116,7 @@
 	 (firstbar (append (list (data timesig))
 			   (first databars)))
 	 (rspbar (append (list firstbar)
-			 (rest databars)))
-	 )
-    ;; (print rspbar)
+			 (rest databars))))
     (values rspbar complete-bars databars)))
 
 ;; A method that generates a rhythm hash table when needed
@@ -396,5 +341,8 @@
 
 ;; Creates a Customised Chord Function
 (defun second-chord (curve-num index pitch-list pitch-seq instrument set)
-  (chord-fun-aux curve-num index pitch-list pitch-seq instrument set 4 3 14))
+  (chord-fun-aux curve-num index pitch-list pitch-seq instrument set 2 2 10))
 
+;; Creates a Customised Chord Function
+(defun no-chord (curve-num index pitch-list pitch-seq instrument set)
+  (chord-fun-aux curve-num index pitch-list pitch-seq instrument set 1 1 2))
